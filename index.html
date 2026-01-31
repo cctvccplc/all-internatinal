@@ -1,174 +1,177 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SMART IPTV PRO | Herber eDevelopment</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMART IPTV PRO | Herber eDevelopment</title>
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
-<style>
-:root {
-    --theme-light:#66d8ff;
-    --theme-moderate:#118599;
-    --theme-dark:#0d3949;
-    --bg-light:#313338;
-    --bg-moderate:#2b2d31;
-    --bg-dark:#1e1f22;
-    --button:#444;
-}
+    <style>
+        :root {
+            --theme-light:#66d8ff;
+            --theme-moderate:#118599;
+            --theme-dark:#0d3949;
+            --bg-light:#313338;
+            --bg-moderate:#2b2d31;
+            --bg-dark:#1e1f22;
+            --button:#444;
+        }
 
-*{box-sizing:border-box}
+        * { box-sizing: border-box; }
 
-body{
-    margin:0;
-    height:100vh;
-    display:flex;
-    background:#000;
-    color:#fff;
-    font-family:sans-serif;
-    overflow:hidden;
-}
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            background: #000;
+            color: #fff;
+            font-family: sans-serif;
+            overflow: hidden;
+        }
 
-/* SIDEBAR DRAWER */
-.list-container {
-    width: 380px;
-    background: var(--bg-moderate);
-    display: flex;
-    flex-direction: column;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 9999; /* সবার উপরে থাকবে */
-    position: absolute;
-    height: 100%;
-    transform: translateX(-100%); /* ডিফল্ট ভাবে লুকানো */
-}
+        /* সাইডবার */
+        .list-container {
+            width: 320px;
+            background: var(--bg-moderate);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            position: absolute;
+            height: 100%;
+        }
 
-body.sidebar-open .list-container {
-    transform: translateX(0);
-}
+        body.sidebar-hidden .list-container { transform: translateX(-100%); }
+        body.sidebar-open .list-container { transform: translateX(0); }
 
-#settings_headline{
-    padding:16px;
-    background:linear-gradient(45deg,var(--theme-dark),var(--theme-moderate),var(--theme-light));
-    font-weight:bold;
-    display:flex;
-    justify-content:space-between;
-}
+        #settings_headline {
+            padding: 16px;
+            background: linear-gradient(45deg, var(--theme-dark), var(--theme-moderate));
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+        }
 
-#current_head{
-    padding:6px 16px;
-    background:var(--bg-dark);
-    font-size:13px;
-    opacity:.7;
-}
+        #search_bar { padding: 10px; background: var(--bg-dark); }
+        
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            background: var(--button);
+            color: #fff;
+            margin-bottom: 6px;
+            border-radius: 4px;
+        }
 
-#search_bar{
-    padding:10px;
-    background:var(--bg-dark);
-}
+        button { cursor: pointer; background: var(--theme-moderate); }
 
-input,select,button{
-    width:100%;
-    padding:10px;
-    border:none;
-    background:var(--button);
-    color:#fff;
-    margin-bottom:6px;
-}
+        .settings-nav {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
 
-button{
-    cursor:pointer;
-    background:var(--theme-moderate);
-}
+        .settings-nav li {
+            padding: 14px 20px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(0,0,0,0.2);
+        }
 
-.settings-nav{
-    list-style:none;
-    padding:0;
-    margin:0;
-    overflow-y:auto;
-    flex-grow:1;
-}
+        .settings-nav li.checked { background: var(--theme-moderate); }
 
-.settings-nav li{
-    padding:14px 20px;
-    cursor:pointer;
-    border-bottom:1px solid #000;
-}
+        .player-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
 
-.settings-nav li:hover,
-.settings-nav li.checked{
-    background:var(--theme-moderate);
-}
+        /* ফ্লোটিং মেনু বাটন */
+        #menuBtn {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 500;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            border: 1px solid #555;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
 
-.player-area{
-    width: 100vw;
-    height: 100vh;
-    background:#000;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-}
+        video { width: 100%; height: 60vh; background: #000; }
 
-video{
-    width:100%;
-    height: 100%;
-    object-fit: contain; /* ভিডিওর রেশিও ঠিক রাখবে */
-}
+        .content-grid {
+            flex-grow: 1;
+            padding: 15px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 10px;
+            overflow-y: auto;
+        }
 
-.content-grid{
-    padding:15px;
-    display:grid;
-    grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
-    gap:12px;
-    overflow-y:auto;
-}
+        .channel-button {
+            background: var(--bg-light);
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            position: relative;
+        }
 
-.channel-button{
-    background:var(--button);
-    padding:12px;
-    border-radius:8px;
-    cursor:pointer;
-    text-align:center;
-}
-
-.channel-button img{
-    width:50px;
-    height:50px;
-    object-fit:contain;
-}
-</style>
+        .channel-button:hover { background: var(--theme-moderate); }
+        .channel-button img { width: 40px; height: 40px; object-fit: contain; }
+        .channel-name { font-size: 11px; margin-top: 5px; height: 30px; overflow: hidden; }
+        
+        .fav-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: none;
+            width: auto;
+            padding: 0;
+            font-size: 18px;
+        }
+    </style>
 </head>
 
-<body>
+<body class="sidebar-open">
 
-<div class="list-container" id="sideBar">
-    <div id="settings_headline">
-        <span>SMART IPTV PRO</span>
-        <span id="clock"></span>
+    <div id="menuBtn" onclick="toggleSidebar()">☰</div>
+
+    <div class="list-container" id="sideBar">
+        <div id="settings_headline">
+            <span>SMART IPTV PRO</span>
+            <span id="clock" style="font-size: 12px;"></span>
+        </div>
+
+        <div id="search_bar">
+            <input type="text" id="searchInput" placeholder="Search Channels..." onkeyup="doSearch()">
+        </div>
+
+        <div style="padding:10px; background:var(--bg-dark)">
+            <select id="playlistSelect" onchange="loadSelectedPlaylist()"></select>
+            <input type="text" id="playlistInput" placeholder="Paste M3U URL">
+            <button onclick="addPlaylist()">+ Add New M3U</button>
+        </div>
+
+        <ul class="settings-nav" id="categoryNav">
+            </ul>
     </div>
 
-    <div id="current_head">// ALL CHANNELS</div>
-
-    <div id="search_bar">
-        <input type="text" id="searchInput" placeholder="Search Channels..." onkeyup="doSearch()">
+    <div class="player-area">
+        <video id="mainVideo" controls autoplay></video>
+        <div class="content-grid" id="mainGrid"></div>
     </div>
-
-    <div style="padding:10px;background:var(--bg-dark)">
-        <input type="text" id="playlistInput" placeholder="Add M3U Playlist URL">
-        <button onclick="addPlaylist()">➕ Add Playlist</button>
-        <select id="playlistSelect"></select>
-        <button onclick="loadSelectedPlaylist()">▶ Load Playlist</button>
-    </div>
-
-    <ul class="settings-nav" id="categoryNav">
-        <li class="checked" onclick="loadCategory('All',this)">All Channels</li>
-        <li onclick="loadCategory('Favorites',this)">⭐ Favorites</li>
-    </ul>
-</div>
-
-<div class="player-area" id="playerArea">
-    <video id="mainVideo" playsinline></video>
-</div>
 
 <script>
 const DEFAULT_M3U = 'https://raw.githubusercontent.com/sm-monirulislam/SM-Live-TV/refs/heads/main/Combined_Live_TV.m3u';
@@ -176,126 +179,158 @@ const DEFAULT_M3U = 'https://raw.githubusercontent.com/sm-monirulislam/SM-Live-T
 let database = [];
 let currentList = [];
 let currentUrl = "";
-let playlists = JSON.parse(localStorage.getItem('herber_playlists')) || [{name:'Default Playlist',url:DEFAULT_M3U}];
+let favs = JSON.parse(localStorage.getItem('herber_favs')) || [];
+let playlists = JSON.parse(localStorage.getItem('herber_playlists')) || [{name:'Default Playlist', url:DEFAULT_M3U}];
 
-initPlaylists();
-loadPlaylist(DEFAULT_M3U);
+const video = document.getElementById('mainVideo');
+let hls = new Hls();
 
-function initPlaylists(){
-    const sel=document.getElementById('playlistSelect');
-    sel.innerHTML='';
-    playlists.forEach(p=>{
-        const o=document.createElement('option');
-        o.value=p.url; o.text=p.name;
-        sel.appendChild(o);
-    });
+// ইনিশিয়ালাইজেশন
+function init() {
+    updatePlaylistDropdown();
+    loadPlaylist(DEFAULT_M3U);
+    updateClock();
 }
 
-async function loadPlaylist(url){
+function updateClock() {
+    document.getElementById('clock').innerText = new Date().toLocaleTimeString();
+    setTimeout(updateClock, 1000);
+}
+
+function toggleSidebar() {
+    document.body.classList.toggle('sidebar-open');
+    document.body.classList.toggle('sidebar-hidden');
+}
+
+function updatePlaylistDropdown() {
+    const sel = document.getElementById('playlistSelect');
+    sel.innerHTML = playlists.map(p => `<option value="${p.url}">${p.name}</option>`).join('');
+}
+
+function addPlaylist() {
+    const url = document.getElementById('playlistInput').value.trim();
+    if(!url) return alert('URL দিন');
+    const name = prompt('প্লেলিস্টের নাম লিখুন:');
+    playlists.push({name: name || 'Custom List', url: url});
+    localStorage.setItem('herber_playlists', JSON.stringify(playlists));
+    updatePlaylistDropdown();
+}
+
+function loadSelectedPlaylist() {
+    loadPlaylist(document.getElementById('playlistSelect').value);
+}
+
+async function loadPlaylist(url) {
     try {
         const res = await fetch(url);
-        const txt = await res.text();
-        parseM3U(txt);
-    } catch(e) { alert("Playlist load failed!"); }
+        const data = await res.text();
+        parseM3U(data);
+    } catch (e) { alert('প্লেলিস্ট লোড করতে সমস্যা হচ্ছে!'); }
 }
 
-function parseM3U(data){
-    database=[];
-    const lines=data.split('\n');
-    let current=null;
-    lines.forEach(l=>{
-        if(l.startsWith('#EXTINF')){
-            current={
-                name:l.split(',')[1]||'Unknown',
-                logo:l.match(/tvg-logo="([^"]+)"/)?.[1]||'',
-                group:l.match(/group-title="([^"]+)"/)?.[1]||'Others'
-            };
-        }else if(l.startsWith('http')){
-            current.url=l.trim();
-            database.push(current);
+function parseM3U(data) {
+    database = [];
+    const lines = data.split('\n');
+    let current = null;
+    let cats = new Set();
+
+    lines.forEach(l => {
+        if(l.startsWith('#EXTINF')) {
+            const name = l.split(',')[1] || 'Unknown';
+            const logo = l.match(/tvg-logo="([^"]+)"/)?.[1] || '';
+            const group = l.match(/group-title="([^"]+)"/)?.[1] || 'General';
+            current = { name, logo, group };
+            cats.add(group);
+        } else if(l.startsWith('http')) {
+            if(current) {
+                current.url = l.trim();
+                database.push(current);
+                current = null;
+            }
         }
     });
-    currentList = database;
-    renderGrid(database);
+
+    renderCategories([...cats].sort());
+    loadCategory('All');
 }
 
-function renderGrid(list){
+function renderCategories(cats) {
     const nav = document.getElementById('categoryNav');
-    // গ্রিড রেন্ডার করার জন্য এখানে বাড়তি UI এলিমেন্ট যোগ করা যেতে পারে।
-    // বর্তমানে শুধু লিস্ট থেকে প্লে করার লজিক রাখা হয়েছে।
+    let html = `<li onclick="loadCategory('All', this)" class="checked">All Channels</li>`;
+    html += `<li onclick="loadCategory('Favs', this)">⭐ Favorites</li>`;
+    cats.forEach(c => {
+        html += `<li onclick="loadCategory('${c}', this)">${c}</li>`;
+    });
+    nav.innerHTML = html;
 }
 
-/* PLAYER LOGIC */
-let hls = new Hls();
-const v = document.getElementById('mainVideo');
-
-function play(url){
-    currentUrl = url;
+function loadCategory(cat, el) {
+    if(el) {
+        document.querySelectorAll('.settings-nav li').forEach(li => li.classList.remove('checked'));
+        el.classList.add('checked');
+    }
     
-    // ভিডিও এরিয়া ফুলস্ক্রিন করা
-    requestFullScreen(document.documentElement);
+    if(cat === 'All') currentList = database;
+    else if(cat === 'Favs') currentList = database.filter(x => favs.includes(x.name));
+    else currentList = database.filter(x => x.group === cat);
+    
+    renderGrid(currentList);
+}
 
-    if(Hls.isSupported()){
+function renderGrid(list) {
+    const g = document.getElementById('mainGrid');
+    g.innerHTML = list.map(ch => {
+        const isFav = favs.includes(ch.name);
+        return `
+            <div class="channel-button" onclick="playStream('${ch.url}')">
+                <button class="fav-btn" onclick="toggleFav(event, '${ch.name}')">${isFav ? '⭐' : '☆'}</button>
+                <img src="${ch.logo}" onerror="this.src='https://via.placeholder.com/50'">
+                <div class="channel-name">${ch.name}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function toggleFav(e, name) {
+    e.stopPropagation();
+    if(favs.includes(name)) favs = favs.filter(n => n !== name);
+    else favs.push(name);
+    localStorage.setItem('herber_favs', JSON.stringify(favs));
+    renderGrid(currentList);
+}
+
+function playStream(url) {
+    currentUrl = url;
+    if (Hls.isSupported()) {
         hls.destroy();
         hls = new Hls();
         hls.loadSource(url);
-        hls.attachMedia(v);
-        hls.on(Hls.Events.MANIFEST_PARSED,()=>v.play());
-    } else { v.src = url; v.play(); }
-
-    // চ্যানেল সিলেক্ট করলে সাইডবার বন্ধ করা
-    document.body.classList.remove('sidebar-open');
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+    } else {
+        video.src = url;
+        video.play();
+    }
+    // মোবাইল স্ক্রিনে চ্যানেল সিলেক্ট করলে সাইডবার বন্ধ হবে
+    if(window.innerWidth < 768) toggleSidebar();
 }
 
-function requestFullScreen(element) {
-    if (element.requestFullscreen) element.requestFullscreen();
-    else if (element.webkitRequestFullscreen) element.webkitRequestFullscreen();
-    else if (element.msRequestFullscreen) element.msRequestFullscreen();
+function doSearch() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const filtered = database.filter(x => x.name.toLowerCase().includes(q));
+    renderGrid(filtered);
 }
 
-/* SWIPE LOGIC */
-let startX = 0, startY = 0;
-
-document.addEventListener('touchstart', e => {
-    startX = e.changedTouches[0].screenX;
-    startY = e.changedTouches[0].screenY;
-});
-
+// জেস্টার কন্ট্রোল (Swipe)
+let touchStartX = 0;
+document.addEventListener('touchstart', e => touchStartX = e.touches[0].clientX);
 document.addEventListener('touchend', e => {
-    let endX = e.changedTouches[0].screenX;
-    let endY = e.changedTouches[0].screenY;
-    let diffX = endX - startX;
-    let diffY = startY - endY;
-
-    // ১. বাম থেকে ডানে সোয়াইপ (বার বের করা) - স্ক্রিনের বাম পাশ থেকে টান দিলে
-    if (diffX > 100 && startX < 80) {
-        document.body.classList.add('sidebar-open');
-    } 
-    // ২. ডান থেকে বামে সোয়াইপ (বার ঢুকানো)
-    else if (diffX < -100) {
-        document.body.classList.remove('sidebar-open');
-    }
-    // ৩. উপরে/নিচে সোয়াইপ (চ্যানেল পরিবর্তন)
-    if (Math.abs(diffY) > 100 && Math.abs(diffX) < 60) {
-        changeChannel(diffY < 0 ? 1 : -1);
-    }
+    let touchEndX = e.changedTouches[0].clientX;
+    if (touchEndX - touchStartX > 100) document.body.classList.replace('sidebar-hidden', 'sidebar-open');
+    if (touchStartX - touchEndX > 100) document.body.classList.replace('sidebar-open', 'sidebar-hidden');
 });
 
-function changeChannel(dir) {
-    if(currentList.length === 0) return;
-    let index = currentList.findIndex(ch => ch.url === currentUrl);
-    index += dir;
-    if (index >= currentList.length) index = 0;
-    if (index < 0) index = currentList.length - 1;
-    play(currentList[index].url);
-}
-
-// ক্যাটাগরি লোড ফাংশন (লিস্ট রেন্ডারিং এর জন্য)
-function loadCategory(cat, el) {
-    // এখানে আপনার ক্যাটাগরি ফিল্টার লজিক থাকবে
-}
-
-setInterval(()=>document.getElementById('clock').innerText=new Date().toLocaleTimeString(),1000);
+init();
 </script>
 
 </body>
