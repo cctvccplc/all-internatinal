@@ -28,6 +28,12 @@ body{
     color:#fff;
     font-family:sans-serif;
     overflow:hidden;
+    transition: all 0.3s ease;
+}
+
+/* ফুলস্ক্রিন হলে সাইডবার হাইড করার CSS */
+body.fullscreen-active .list-container {
+    display: none;
 }
 
 .list-container{
@@ -35,6 +41,7 @@ body{
     background:var(--bg-moderate);
     display:flex;
     flex-direction:column;
+    z-index: 10;
 }
 
 #settings_headline{
@@ -94,12 +101,14 @@ button{
     flex-grow:1;
     display:flex;
     flex-direction:column;
+    position: relative;
 }
 
 video{
     width:100%;
-    max-height:450px;
+    max-height:100%; /* ফুলস্ক্রিনে যাতে পুরোটা পায় */
     background:#000;
+    outline: none;
 }
 
 .content-grid{
@@ -132,58 +141,50 @@ video{
 
 <body>
 
-<!-- SIDEBAR -->
-<div class="list-container">
+<div class="list-container" id="sideBar">
+    <div id="settings_headline">
+        <span>SMART IPTV PRO</span>
+        <span id="clock"></span>
+    </div>
 
-<div id="settings_headline">
-<span>SMART IPTV PRO</span>
-<span id="clock"></span>
+    <div id="current_head">// ALL CHANNELS</div>
+
+    <div id="search_bar">
+        <input type="text" id="searchInput" placeholder="Search Channels..." onkeyup="doSearch()">
+    </div>
+
+    <div style="padding:10px;background:var(--bg-dark)">
+        <input type="text" id="playlistInput" placeholder="Add M3U Playlist URL">
+        <button onclick="addPlaylist()">➕ Add Playlist</button>
+        <select id="playlistSelect"></select>
+        <button onclick="loadSelectedPlaylist()">▶ Load Playlist</button>
+    </div>
+
+    <ul class="settings-nav" id="categoryNav">
+        <li class="checked" onclick="loadCategory('All',this)">All Channels</li>
+        <li onclick="loadCategory('Favorites',this)">⭐ Favorites</li>
+    </ul>
 </div>
 
-<div id="current_head">// ALL CHANNELS</div>
-
-<div id="search_bar">
-<input type="text" id="searchInput" placeholder="Search Channels..." onkeyup="doSearch()">
-</div>
-
-<!-- PLAYLIST SECTION -->
-<div style="padding:10px;background:var(--bg-dark)">
-<input type="text" id="playlistInput" placeholder="Add M3U Playlist URL">
-<button onclick="addPlaylist()">➕ Add Playlist</button>
-
-<select id="playlistSelect"></select>
-<button onclick="loadSelectedPlaylist()">▶ Load Playlist</button>
-</div>
-
-<ul class="settings-nav" id="categoryNav">
-<li class="checked" onclick="loadCategory('All',this)">All Channels</li>
-<li onclick="loadCategory('Favorites',this)">⭐ Favorites</li>
-</ul>
-
-</div>
-
-<!-- PLAYER -->
 <div class="player-area">
-<video id="mainVideo" controls autoplay></video>
-<div class="content-grid" id="mainGrid"></div>
+    <video id="mainVideo" controls autoplay></video>
+    <div class="content-grid" id="mainGrid"></div>
 </div>
 
 <script>
-/* DEFAULT PLAYLIST */
-const DEFAULT_M3U =
-'https://raw.githubusercontent.com/sm-monirulislam/SM-Live-TV/refs/heads/main/Combined_Live_TV.m3u';
+const DEFAULT_M3U = 'https://raw.githubusercontent.com/sm-monirulislam/SM-Live-TV/refs/heads/main/Combined_Live_TV.m3u';
 
 let database = [];
+let currentList = []; // সোয়াইপ এর জন্য বর্তমান ফিল্টার করা লিস্ট
+let currentUrl = "";
 let favs = JSON.parse(localStorage.getItem('herber_favs')) || [];
 let playlists = JSON.parse(localStorage.getItem('herber_playlists')) || [
     {name:'Default Playlist',url:DEFAULT_M3U}
 ];
 
-/* INIT */
 initPlaylists();
 loadPlaylist(DEFAULT_M3U);
 
-/* PLAYLIST LOGIC */
 function initPlaylists(){
     const sel=document.getElementById('playlistSelect');
     sel.innerHTML='';
@@ -224,7 +225,6 @@ async function loadPlaylist(url){
     parseM3U(txt);
 }
 
-/* M3U PARSER */
 function parseM3U(data){
     const lines=data.split('\n');
     let current=null;
@@ -252,10 +252,10 @@ function parseM3U(data){
         nav.appendChild(li);
     });
 
+    currentList = database;
     renderGrid(database);
 }
 
-/* UI LOGIC */
 function renderGrid(list){
     const g=document.getElementById('mainGrid');
     g.innerHTML='';
@@ -279,33 +279,80 @@ function loadCategory(cat,el){
     el.classList.add('checked');
     document.getElementById('current_head').innerText='// '+cat.toUpperCase();
 
-    if(cat==='All') renderGrid(database);
-    else if(cat==='Favorites') renderGrid(database.filter(x=>favs.includes(x.name)));
-    else renderGrid(database.filter(x=>x.group===cat));
+    if(cat==='All') currentList = database;
+    else if(cat==='Favorites') currentList = database.filter(x=>favs.includes(x.name));
+    else currentList = database.filter(x=>x.group===cat);
+    
+    renderGrid(currentList);
 }
 
 function toggleFav(n){
     favs.includes(n)?favs=favs.filter(x=>x!==n):favs.push(n);
     localStorage.setItem('herber_favs',JSON.stringify(favs));
-    renderGrid(database);
+    renderGrid(currentList);
 }
 
-/* PLAYER */
+/* PLAYER & FULLSCREEN LOGIC */
+let hls = new Hls();
+
 function play(url){
+    currentUrl = url;
     const v=document.getElementById('mainVideo');
     if(Hls.isSupported()){
-        const h=new Hls();
-        h.loadSource(url);
-        h.attachMedia(v);
-    }else v.src=url;
+        hls.destroy();
+        hls = new Hls();
+        hls.loadSource(url);
+        hls.attachMedia(v);
+        hls.on(Hls.Events.MANIFEST_PARSED,()=>v.play());
+    }else if(v.canPlayType('application/vnd.apple.mpegurl')){
+        v.src=url;
+        v.play();
+    }
+}
+
+// ফুলস্ক্রিন হলে সাইডবার হাইড করার ইভেন্ট
+document.addEventListener('fullscreenchange', () => {
+    if (document.fullscreenElement) {
+        document.body.classList.add('fullscreen-active');
+    } else {
+        document.body.classList.remove('fullscreen-active');
+    }
+});
+
+/* SWIPE TO CHANGE CHANNEL */
+let touchStartY = 0;
+const videoContainer = document.getElementById('mainVideo');
+
+videoContainer.addEventListener('touchstart', e => {
+    touchStartY = e.changedTouches[0].screenY;
+});
+
+videoContainer.addEventListener('touchend', e => {
+    let touchEndY = e.changedTouches[0].screenY;
+    let diff = touchStartY - touchEndY;
+
+    if (Math.abs(diff) > 70) { // ৭০ পিক্সেল সোয়াইপ করলে চেঞ্জ হবে
+        changeChannel(diff > 0 ? 1 : -1);
+    }
+});
+
+function changeChannel(dir) {
+    if(currentList.length === 0) return;
+    let index = currentList.findIndex(ch => ch.url === currentUrl);
+    index += dir;
+
+    if (index >= currentList.length) index = 0;
+    if (index < 0) index = currentList.length - 1;
+
+    play(currentList[index].url);
 }
 
 function doSearch(){
     const q=searchInput.value.toLowerCase();
-    renderGrid(database.filter(x=>x.name.toLowerCase().includes(q)));
+    currentList = database.filter(x=>x.name.toLowerCase().includes(q));
+    renderGrid(currentList);
 }
 
-/* CLOCK */
 setInterval(()=>clock.innerText=new Date().toLocaleTimeString(),1000);
 </script>
 
