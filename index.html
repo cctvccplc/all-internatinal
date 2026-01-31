@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMART IPTV PRO | Herber eDevelopment</title>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+<style>
+:root {
+    --theme-light:#66d8ff;
+    --theme-moderate:#118599;
+    --theme-dark:#0d3949;
+    --bg-light:#313338;
+    --bg-moderate:#2b2d31;
+    --bg-dark:#1e1f22;
+    --button:#444;
+}
+
+*{box-sizing:border-box}
+
+body{
+    margin:0;
+    height:100vh;
+    display:flex;
+    background:#000;
+    color:#fff;
+    font-family:sans-serif;
+    overflow:hidden;
+}
+
+.list-container{
+    width:380px;
+    background:var(--bg-moderate);
+    display:flex;
+    flex-direction:column;
+}
+
+#settings_headline{
+    padding:16px;
+    background:linear-gradient(45deg,var(--theme-dark),var(--theme-moderate),var(--theme-light));
+    font-weight:bold;
+    display:flex;
+    justify-content:space-between;
+}
+
+#current_head{
+    padding:6px 16px;
+    background:var(--bg-dark);
+    font-size:13px;
+    opacity:.7;
+}
+
+#search_bar{
+    padding:10px;
+    background:var(--bg-dark);
+}
+
+input,select,button{
+    width:100%;
+    padding:10px;
+    border:none;
+    background:var(--button);
+    color:#fff;
+    margin-bottom:6px;
+}
+
+button{
+    cursor:pointer;
+    background:var(--theme-moderate);
+}
+
+.settings-nav{
+    list-style:none;
+    padding:0;
+    margin:0;
+    overflow-y:auto;
+    flex-grow:1;
+}
+
+.settings-nav li{
+    padding:14px 20px;
+    cursor:pointer;
+    border-bottom:1px solid #000;
+}
+
+.settings-nav li:hover,
+.settings-nav li.checked{
+    background:var(--theme-moderate);
+}
+
+.player-area{
+    flex-grow:1;
+    display:flex;
+    flex-direction:column;
+}
+
+video{
+    width:100%;
+    max-height:450px;
+    background:#000;
+}
+
+.content-grid{
+    padding:15px;
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+    gap:12px;
+    overflow-y:auto;
+}
+
+.channel-button{
+    background:var(--button);
+    padding:12px;
+    border-radius:8px;
+    cursor:pointer;
+    text-align:center;
+}
+
+.channel-button:hover{
+    background:var(--theme-moderate);
+}
+
+.channel-button img{
+    width:50px;
+    height:50px;
+    object-fit:contain;
+}
+</style>
+</head>
+
+<body>
+
+<!-- SIDEBAR -->
+<div class="list-container">
+
+<div id="settings_headline">
+<span>SMART IPTV PRO</span>
+<span id="clock"></span>
+</div>
+
+<div id="current_head">// ALL CHANNELS</div>
+
+<div id="search_bar">
+<input type="text" id="searchInput" placeholder="Search Channels..." onkeyup="doSearch()">
+</div>
+
+<!-- PLAYLIST SECTION -->
+<div style="padding:10px;background:var(--bg-dark)">
+<input type="text" id="playlistInput" placeholder="Add M3U Playlist URL">
+<button onclick="addPlaylist()">➕ Add Playlist</button>
+
+<select id="playlistSelect"></select>
+<button onclick="loadSelectedPlaylist()">▶ Load Playlist</button>
+</div>
+
+<ul class="settings-nav" id="categoryNav">
+<li class="checked" onclick="loadCategory('All',this)">All Channels</li>
+<li onclick="loadCategory('Favorites',this)">⭐ Favorites</li>
+</ul>
+
+</div>
+
+<!-- PLAYER -->
+<div class="player-area">
+<video id="mainVideo" controls autoplay></video>
+<div class="content-grid" id="mainGrid"></div>
+</div>
+
+<script>
+/* DEFAULT PLAYLIST */
+const DEFAULT_M3U =
+'https://raw.githubusercontent.com/sm-monirulislam/SM-Live-TV/refs/heads/main/Combined_Live_TV.m3u';
+
+let database = [];
+let favs = JSON.parse(localStorage.getItem('herber_favs')) || [];
+let playlists = JSON.parse(localStorage.getItem('herber_playlists')) || [
+    {name:'Default Playlist',url:DEFAULT_M3U}
+];
+
+/* INIT */
+initPlaylists();
+loadPlaylist(DEFAULT_M3U);
+
+/* PLAYLIST LOGIC */
+function initPlaylists(){
+    const sel=document.getElementById('playlistSelect');
+    sel.innerHTML='';
+    playlists.forEach(p=>{
+        const o=document.createElement('option');
+        o.value=p.url;
+        o.text=p.name;
+        sel.appendChild(o);
+    });
+    savePlaylists();
+}
+
+function savePlaylists(){
+    localStorage.setItem('herber_playlists',JSON.stringify(playlists));
+}
+
+function addPlaylist(){
+    const url=document.getElementById('playlistInput').value.trim();
+    if(!url)return alert('M3U URL দিন');
+    const name=prompt('Playlist Name');
+    playlists.push({name:name||url,url});
+    initPlaylists();
+    alert('Playlist Added');
+}
+
+function loadSelectedPlaylist(){
+    const url=document.getElementById('playlistSelect').value;
+    if(url) loadPlaylist(url);
+}
+
+async function loadPlaylist(url){
+    database=[];
+    document.getElementById('categoryNav').innerHTML=
+    `<li class="checked" onclick="loadCategory('All',this)">All Channels</li>
+     <li onclick="loadCategory('Favorites',this)">⭐ Favorites</li>`;
+    const res=await fetch(url);
+    const txt=await res.text();
+    parseM3U(txt);
+}
+
+/* M3U PARSER */
+function parseM3U(data){
+    const lines=data.split('\n');
+    let current=null;
+    let cats=new Set();
+
+    lines.forEach(l=>{
+        if(l.startsWith('#EXTINF')){
+            current={
+                name:l.split(',')[1]||'Unknown',
+                logo:l.match(/tvg-logo="([^"]+)"/)?.[1]||'',
+                group:l.match(/group-title="([^"]+)"/)?.[1]||'Others'
+            };
+            cats.add(current.group);
+        }else if(l.startsWith('http')){
+            current.url=l.trim();
+            database.push(current);
+        }
+    });
+
+    const nav=document.getElementById('categoryNav');
+    [...cats].sort().forEach(c=>{
+        const li=document.createElement('li');
+        li.innerText=c;
+        li.onclick=()=>loadCategory(c,li);
+        nav.appendChild(li);
+    });
+
+    renderGrid(database);
+}
+
+/* UI LOGIC */
+function renderGrid(list){
+    const g=document.getElementById('mainGrid');
+    g.innerHTML='';
+    list.forEach(ch=>{
+        const d=document.createElement('div');
+        d.className='channel-button';
+        d.innerHTML=`
+        <img src="${ch.logo}" onerror="this.src='https://via.placeholder.com/50'">
+        <div>${favs.includes(ch.name)?'⭐':''} ${ch.name}</div>`;
+        d.onclick=()=>play(ch.url);
+        d.oncontextmenu=e=>{
+            e.preventDefault();
+            toggleFav(ch.name);
+        };
+        g.appendChild(d);
+    });
+}
+
+function loadCategory(cat,el){
+    document.querySelectorAll('.settings-nav li').forEach(x=>x.classList.remove('checked'));
+    el.classList.add('checked');
+    document.getElementById('current_head').innerText='// '+cat.toUpperCase();
+
+    if(cat==='All') renderGrid(database);
+    else if(cat==='Favorites') renderGrid(database.filter(x=>favs.includes(x.name)));
+    else renderGrid(database.filter(x=>x.group===cat));
+}
+
+function toggleFav(n){
+    favs.includes(n)?favs=favs.filter(x=>x!==n):favs.push(n);
+    localStorage.setItem('herber_favs',JSON.stringify(favs));
+    renderGrid(database);
+}
+
+/* PLAYER */
+function play(url){
+    const v=document.getElementById('mainVideo');
+    if(Hls.isSupported()){
+        const h=new Hls();
+        h.loadSource(url);
+        h.attachMedia(v);
+    }else v.src=url;
+}
+
+function doSearch(){
+    const q=searchInput.value.toLowerCase();
+    renderGrid(database.filter(x=>x.name.toLowerCase().includes(q)));
+}
+
+/* CLOCK */
+setInterval(()=>clock.innerText=new Date().toLocaleTimeString(),1000);
+</script>
+
+</body>
+</html>
